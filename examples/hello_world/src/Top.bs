@@ -1,15 +1,31 @@
--- Copyright (c) 2014-2020 Bluespec, Inc.  All Rights Reserved.
-
 package Top where
 
 mkTop :: Module Empty
 mkTop =
   module
-    addRules mkHelloRule
+    cycle :: Reg (Bit 32)
+    cycle <- mkReg 0
+
+    end_cycle :: Reg (Bit 32)
+    end_cycle <- mkReg 4
+
+    -- addRules $ mkHelloRule <+> (run_for cycle end_cycle)
+    addRules $ (run_for cycle end_cycle) <+> mkHelloRule
 
 mkHelloRule :: Rules
 mkHelloRule = 
     rules
       "rl_print_answer": when True ==> action
           $display "Hello World."
-          $finish
+
+run_for :: (Bits a n, Arith a, Eq a) => Reg a -> Reg a -> Rules
+run_for curr_cycle end_cycle =
+    rules
+      "count_cycle_rule": when True ==> action
+        curr_cycle := curr_cycle + 1
+        $display "firing run_for rule"
+        if curr_cycle == end_cycle
+          then 
+            $finish
+          else
+            $display curr_cycle

@@ -157,4 +157,4 @@ v_sim_vcd:
 
 .PHONY: clean
 clean:
-	rm -rf  build_b_sim  build_v mkTop*
+	rm -rf  build_b_sim  build_v mkTop* *.vcd
