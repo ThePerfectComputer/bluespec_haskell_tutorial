@@ -25,7 +25,8 @@
 TUTORIAL ?= ..
 
 # Set this to the command that invokes your Verilog simulator
-V_SIM ?= iverilog
+# V_SIM ?= verilator
+# V_SIM ?= iverilog
 # V_SIM ?= cvc
 # V_SIM ?= cver
 # V_SIM ?= vcsi
@@ -33,6 +34,10 @@ V_SIM ?= iverilog
 # V_SIM ?= modelsim
 # V_SIM ?= ncsim
 # V_SIM ?= ncverilog
+
+ifeq ($(V_SIM),verilator)
+  V_SIM += -Xv --no-timing
+endif
 
 # ================================================================
 # You should not have to change anything below this line
@@ -52,7 +57,12 @@ endif
 TOPFILE   ?= src/Top.$(SRC_EXT)
 TOPMODULE ?= mkTop
 
-BSC_COMP_FLAGS += -keep-fires  -aggressive-conditions  -no-warn-action-shadowing  -check-assert  -cpp \
+BSC_COMP_FLAGS += \
+		-keep-fires  \
+		-aggressive-conditions  \
+		-no-warn-action-shadowing  \
+		-check-assert  \
+		-cpp \
 		+RTS -K128M -RTS  -show-range-conflict \
 		$(BSC_COMP_FLAG1)  $(BSC_COMP_FLAG2)  $(BSC_COMP_FLAG3)
 
@@ -157,4 +167,4 @@ v_sim_vcd:
 
 .PHONY: clean
 clean:
-	rm -rf  build_b_sim  build_v mkTop* *.vcd
+	rm -rf  build_b_sim  build_v mkTop* *.vcd build_v obj_dir* verilog_RTL

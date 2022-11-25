@@ -9,23 +9,22 @@ mkTop =
     end_cycle :: Reg (Bit 32)
     end_cycle <- mkReg 4
 
-    -- addRules $ mkHelloRule <+> (run_for cycle end_cycle)
-    addRules $ (run_for cycle end_cycle) <+> mkHelloRule
+    addRules $ mkHelloRule <+> (run_for cycle end_cycle)
+    -- addRules $ (run_for cycle end_cycle) <+> mkHelloRule
 
 mkHelloRule :: Rules
 mkHelloRule = 
     rules
       "rl_print_answer": when True ==> action
-          $display "Hello World."
+          $display "Hello World." $stime
 
 run_for :: (Bits a n, Arith a, Eq a) => Reg a -> Reg a -> Rules
 run_for curr_cycle end_cycle =
-    rules
-      "count_cycle_rule": when True ==> action
-        curr_cycle := curr_cycle + 1
-        $display "firing run_for rule"
-        if curr_cycle == end_cycle
-          then 
-            $finish
-          else
-            $display curr_cycle
+  rules
+    "count_cycle_rule": when True ==> action
+      curr_cycle := curr_cycle + 1
+      if curr_cycle == end_cycle
+        then 
+          $finish
+        else
+          $display curr_cycle

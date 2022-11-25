@@ -10,3 +10,13 @@ To build from source on MacOS Ventura, you may need to modify [this file](https:
 CFLAGS += -Wno-deprecated-declarations
 CXXFLAGS += -Wno-deprecated-declarations
 ```
+
+# Other Dependencies
+
+You will need ``verilator`` and ``icarus-verilog`` if you wish to try other simulators besides ``bsim``.
+
+On MacOS, you can do:
+
+```bash
+brew icarus-verilog verilator
+```
