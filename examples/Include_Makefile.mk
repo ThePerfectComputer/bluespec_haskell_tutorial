@@ -68,7 +68,7 @@ BSC_COMP_FLAGS += \
 
 BSC_LINK_FLAGS += -keep-fires
 
-BSC_PATHS = -p $(BSC_PATH1)src:$(RESOURCES_DIR):+
+BSC_PATHS = -p src/:+
 
 .PHONY: help
 help:
