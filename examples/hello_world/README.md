@@ -26,7 +26,7 @@ Bluesim simulation finished
 # Verilator
 
 ```bash
-V_SIM=verilator make b_compile b_link v_compile v_link v_sim_vcd
+V_SIM=verilator make v_compile v_link v_sim_vcd
 
 Verilog simulation and dumping VCD in dump.vcd ...
 ./mkTop_v_sim  +bscvcd
@@ -45,7 +45,7 @@ Hello World.        45
 
 # Icarus
 ```bash
-V_SIM=iverilog make b_compile b_link v_compile v_link v_sim_vcd
+V_SIM=iverilog make v_compile v_link v_sim_vcd
 
 Verilog simulation and dumping VCD in dump.vcd ...
 ./mkTop_v_sim  +bscvcd
