@@ -1,0 +1,49 @@
+package CyclicAlu where
+
+data AluState = Add | Subtract | Multiply deriving(Bits, Eq, FShow)
+
+interface CyclicAlu a =
+    advance    :: Action
+    get_state  :: AluState
+    get_output :: a
+
+mkCyclicAlu :: (Bits a n, Arith a, Eq a) => a -> Module (CyclicAlu a)
+mkCyclicAlu a =
+  module
+    -- build what is basically an alu with a state register
+    state :: Reg(AluState)
+    state <- mkReg(Add)
+
+    x :: Reg(a)
+    x <- mkReg 10
+
+    y :: Reg(a)
+    y <- mkReg 12
+
+    z :: Wire(a)
+    z <- mkWire
+
+    rules
+      "alu": when True ==> action
+        y := 
+          case state of
+            Add      -> x + y
+            Subtract -> x - y
+            Multiply -> x * y
+
+      "display": when True ==> action
+        $display "alu.z = " z
+        $display "state = " (fshow state)
+    
+    let advance :: Action
+        advance = do
+                state :=
+                  case state of
+                    Add      -> Subtract
+                    Subtract -> Multiply
+                    Multiply -> Add
+
+    interface
+      advance = advance      
+      get_state = state
+      get_output = z

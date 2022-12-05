@@ -1,0 +1,16 @@
+package Top where
+
+import Util
+import CyclicAlu
+
+mkTop :: Module Empty
+mkTop =
+  module
+    -- allows us to run and end the simulation
+    cycle <- mkReg 0
+    end_cycle <- mkReg 4
+    addRules (simulate_for cycle end_cycle)
+
+    rules
+      "rl_print_answer": when True ==> action
+          $display "Hello World." $stime
