@@ -4,6 +4,7 @@ An state machine that cycles an ALU between the ``Add``, ``Subtract``, and ``Mul
 ```bash
 make b_compile b_link b_sim
 
+# some output snipped
 Compiling for Bluesim finished
 Bluesim simulation ...
 ./mkTop_b_sim
@@ -53,6 +54,7 @@ Verilog simulation finished
 ```bash
 V_SIM=iverilog make v_compile v_link v_sim_vcd
 
+# some output snipped
 Verilog binary file created: ./mkTop_v_sim
 Linking for Verilog sim finished
 Verilog simulation...

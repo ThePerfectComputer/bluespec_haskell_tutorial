@@ -7,10 +7,14 @@ mkTop :: Module Empty
 mkTop =
   module
     -- allows us to run and end the simulation
-    cycle <- mkReg 0
-    end_cycle <- mkReg 4
+    cycle       <- mkReg 0
+    end_cycle   <- mkReg 4
+    cyclic_alu  <- mkCyclicAlu (12 :: Int 32)
     addRules (simulate_for cycle end_cycle)
 
     rules
       "rl_print_answer": when True ==> action
-          $display "Hello World." $stime
+          $display "cyclic_alu.z = " cyclic_alu.get_output
+          $display "cyclic_alu.state = " (fshow cyclic_alu.get_state)
+          $display
+          cyclic_alu.advance

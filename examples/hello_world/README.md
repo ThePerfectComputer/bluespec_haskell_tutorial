@@ -8,6 +8,7 @@ I practice, I suspect this won't matter as bsim may have different reset semanti
 ```bash
 make b_compile b_link b_sim
 
+# some output snipped
 Bluesim simulation ...
 ./mkTop_b_sim
 Hello World.         0
