@@ -1,69 +1,41 @@
-A simple intro example that increments a cycle counter and also prints out "Hello World."
+A simple blinky example meant to be programmed into the ULX3S FPGA.
 
-Try swappping the order of the rules between lines 12 and 13 to see how firing order/timing changes in bsim, but not in verilator nor iverilog.
+The design build process is split up into two parts: simulation and Verilog generation.
+To change between simulating and generating verilog, the top module must be specified
+using ``TOPMODULE=``, for example:
 
-In practice, I suspect this won't matter as bsim may have different reset semantics 
-from the verilog bsc emits. There is a discussion about this behavior
-[here](https://github.com/BracketMaster/bluespec_haskell_tutorial/tree/main/examples/hello_world); 
-TDLR, bluespec prunes away the reset signal for rules that don't have 
-predicates - causing such rules to ignore reset and fire when reset is asserted
-during the first clock edge at time zero. 
+``TOPMODULE=mkSim make b_compile b_link b_sim`` to simulate and
 
-# Bsim
+``TOPMODULE=mkBlinky make v_compile`` to generate verilog. The generated verilog can
+be found in the ``verilog_RTL/`` folder.
+
+# Simulation
 ```bash
-make b_compile b_link b_sim
+TOPMODULE=mkSim make b_compile b_link b_sim
 
 # some output snipped
 Bluesim simulation ...
-./mkTop_b_sim
-Hello World.         0
-Hello World.        10
+./mkSim_b_sim
          0
-Hello World.        20
+led = 1
          1
-Hello World.        30
+led = 0
          2
-Hello World.        40
+led = 1
          3
-Hello World.        50
+led = 0
 Bluesim simulation finished
 ```
 
-# Verilator
+# Generating Verilog
 
 ```bash
-V_SIM=verilator make v_compile v_link v_sim_vcd
+TOPMODULE=mkBlinky make v_compile
 
-Verilog simulation and dumping VCD in dump.vcd ...
-./mkTop_v_sim  +bscvcd
-Enabling waves into dump.vcd...
-Hello World.         5
-         0
-Hello World.        15
-         1
-Hello World.        25
-         2
-Hello World.        35
-         3
-Hello World.        45
-- verilog_RTL/mkTop.v:116: Verilog $finish
-```
-
-# Icarus
-```bash
-V_SIM=iverilog make v_compile v_link v_sim_vcd
-
-Verilog simulation and dumping VCD in dump.vcd ...
-./mkTop_v_sim  +bscvcd
-VCD info: dumpfile dump.vcd opened for output.
-Hello World.         5
-         0
-Hello World.        15
-         1
-Hello World.        25
-         2
-Hello World.        35
-         3
-Hello World.        45
-Verilog simulation and dumping VCD in dump.vcd finished
+# some output truncated
+compiling src/Top.bs
+code generation for mkBlinky starts
+Verilog file created: verilog_RTL/mkBlinky.v
+All packages are up to date.
+Compiling for Verilog finished
 ```

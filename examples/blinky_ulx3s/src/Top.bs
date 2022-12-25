@@ -1,0 +1,53 @@
+package Top where
+
+data LED = On | Off deriving(Eq, FShow, Bits)
+
+interface Blinky =
+    o :: UInt 1
+  
+mkBlinky :: Module (Blinky)
+mkBlinky = 
+  module
+    led_state :: Reg(LED)
+    led_state <- mkReg(On)
+
+    rules 
+      "blink": when True ==> action
+        led_state := case led_state of
+                      On  -> Off 
+                      Off -> On
+    interface
+      o = case led_state of
+                On  -> 1
+                Off -> 0
+
+mkSim :: Module Empty
+mkSim =
+  module
+    dut <- mkBlinky
+
+    cycle <- mkReg 0
+    end_cycle <- mkReg 4
+
+    addRules $ 
+      simulate_for cycle end_cycle <+>
+      led_status dut
+
+led_status :: Blinky -> Rules
+led_status dut = 
+  rules 
+    "led_status":
+      when True 
+        ==> action
+              $display "led = " dut.o
+
+simulate_for :: (Bits a n, Arith a, Eq a) => Reg a -> Reg a -> Rules
+simulate_for curr_cycle end_cycle =
+  rules
+    "count_cycle_rule": when True ==> action
+      curr_cycle := curr_cycle + 1
+      if curr_cycle == end_cycle
+        then 
+          $finish
+        else
+          $display curr_cycle
