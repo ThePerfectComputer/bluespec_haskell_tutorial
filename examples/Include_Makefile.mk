@@ -167,4 +167,4 @@ v_sim_vcd:
 
 .PHONY: clean
 clean:
-	rm -rf  build_b_sim  build_v mkTop* *.vcd build_v obj_dir* verilog_RTL
+	rm -rf  build_b_sim  build_v mkTop* *.vcd build_v obj_dir* verilog_RTL *.so
