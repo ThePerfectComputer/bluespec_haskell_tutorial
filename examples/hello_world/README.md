@@ -2,7 +2,12 @@ A simple intro example that increments a cycle counter and also prints out "Hell
 
 Try swappping the order of the rules between lines 12 and 13 to see how firing order/timing changes in bsim, but not in verilator nor iverilog.
 
-I practice, I suspect this won't matter as bsim may have different reset semantics from the verilog bsc emits.
+In practice, I suspect this won't matter as bsim may have different reset semantics 
+from the verilog bsc emits. There is a discussion about this behavior
+[here](https://github.com/BracketMaster/bluespec_haskell_tutorial/tree/main/examples/hello_world); 
+TDLR, bluespec prunes away the reset signal for rules that don't have 
+predicates - causing such rules to ignore reset and fire when reset is asserted
+during the first clock edge at time zero. 
 
 # Bsim
 ```bash
