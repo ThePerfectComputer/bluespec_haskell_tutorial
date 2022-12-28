@@ -47,6 +47,12 @@ Below, I suggest an order in which the included example should be examined:
 
 ## Suggested Order
 
+### FPGA and Bluespec Haskell
+If you you want to get started with programming an FPGA with bluespec right away, go to
+[blinky_ulx3s](./examples/blinky_ulx3s).
+
+### Bluespec Haskell, the more Erudite Path
+
 1. [hello_world](./examples/hello_world/)
 
     First start with the hello world example to help grasp the basics of invoking a makefile which invoke the bluespec compiler. The underlying makefile is can be found [here](./Include_Makefile.mk) and should make sense after about 30 minutes of study.
@@ -73,3 +79,6 @@ On MacOS, you can do:
 ```bash
 brew icarus-verilog verilator
 ```
+
+If you want to program the ULX3S FPGA, you'll need the tools listed 
+[here](https://github.com/BracketMaster/bluespec_haskell_tutorial/tree/main/examples/blinky_ulx3s#programming-the-ulx3s).
