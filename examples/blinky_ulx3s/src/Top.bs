@@ -1,53 +1,41 @@
 package Top where
 
-data LED = On | Off deriving(Eq, FShow, Bits)
-
 interface Blinky =
-    o :: UInt 1
+    led        :: Bit 8
   
+{-# properties mkBlinky={alwaysReady} #-}
 mkBlinky :: Module (Blinky)
 mkBlinky = 
   module
-    led_state :: Reg(LED)
-    led_state <- mkReg(On)
+    counter   <- mkReg(0 :: UInt 32)
 
     rules 
-      "blink": when True ==> action
-        led_state := case led_state of
-                      On  -> Off 
-                      Off -> On
+      "incr": when True ==> action
+        counter := counter + 1
+
     interface
-      o = case led_state of
-                On  -> 1
-                Off -> 0
+      led        = (pack counter)[29:22]
 
 mkSim :: Module Empty
 mkSim =
   module
     dut <- mkBlinky
+    old_led_val <- mkReg(0 :: Bit 8)
 
-    cycle <- mkReg 0
-    end_cycle <- mkReg 4
+    cycle  <- mkReg(0 :: UInt 32)
+    alerts <- mkReg(0 :: UInt 32)
 
-    addRules $ 
-      simulate_for cycle end_cycle <+>
-      led_status dut
+    rules
+      "incr cycle": when True ==> action
+        cycle := cycle + 1
 
-led_status :: Blinky -> Rules
-led_status dut = 
-  rules 
-    "led_status":
-      when True 
-        ==> action
-              $display "led = " dut.o
+      "follow led": when True ==> action
+        old_led_val := dut.led
 
-simulate_for :: (Bits a n, Arith a, Eq a) => Reg a -> Reg a -> Rules
-simulate_for curr_cycle end_cycle =
-  rules
-    "count_cycle_rule": when True ==> action
-      curr_cycle := curr_cycle + 1
-      if curr_cycle == end_cycle
-        then 
-          $finish
-        else
-          $display curr_cycle
+      "notify change": when (old_led_val /= dut.led) ==> action
+        $display "cycle = " cycle
+        $display "dut.led = " dut.led
+        alerts := alerts + 1
+
+      "end sim": when (alerts == 6) ==> action
+        $finish

@@ -63,6 +63,7 @@ BSC_COMP_FLAGS += \
 		-no-warn-action-shadowing  \
 		-check-assert  \
 		-cpp \
+		-show-schedule \
 		+RTS -K128M -RTS  -show-range-conflict \
 		$(BSC_COMP_FLAG1)  $(BSC_COMP_FLAG2)  $(BSC_COMP_FLAG3)
 
@@ -133,6 +134,7 @@ b_sim_vcd:
 
 V_DIRS = -vdir verilog_RTL -bdir build_v -info-dir build_v
 V_SIM_EXE = $(TOPMODULE)_v_sim
+V_COMP_FLAGS = -remove-dollar
 
 .PHONY: v_all
 v_all: v_compile  v_link  v_sim
