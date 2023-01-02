@@ -1,0 +1,22 @@
+package Top where
+
+import GetPut
+import FIFO
+
+mkTop :: Module (Get (UInt 32), Put (UInt 32))
+mkTop = 
+  module
+
+    -- the size of this FIFO is not specified
+    fifo :: FIFO (UInt 32)
+    fifo <- mkFIFO
+    
+    return $
+      (interface Get
+        get = do
+          return (4 :: UInt 32)
+      ,
+      interface Put
+        put a = do
+          fifo.enq a
+      )
