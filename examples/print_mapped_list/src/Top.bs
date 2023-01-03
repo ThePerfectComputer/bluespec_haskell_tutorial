@@ -1,0 +1,18 @@
+package Top where
+import List
+
+mkTop :: Module (Empty)
+mkTop = 
+  module
+  counter <- mkReg(0 :: UInt 32)
+  let list1 :: List (Integer)  = (upto 1 4)
+  let list2 :: List (UInt 32)  = (map (\x -> fromInteger x) list1)
+
+  rules
+    "simulate" : when counter < 5 ==> action
+      counter := counter + 1
+      if counter == 1 then
+        do
+          $finish
+      else action {}
+      $display (fshow list2)
