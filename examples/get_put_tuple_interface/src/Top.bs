@@ -13,10 +13,12 @@ mkTop =
     
     return $
       (interface Get
+        get :: ActionValue (UInt 32)
         get = do
           return (4 :: UInt 32)
       ,
       interface Put
+        put :: UInt 32 -> Action
         put a = do
           fifo.enq a
       )
