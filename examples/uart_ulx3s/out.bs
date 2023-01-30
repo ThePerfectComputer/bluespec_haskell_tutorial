@@ -1,0 +1,42 @@
+package /Users/yehowshuaimmanuel/git/bsc/testsuite/bsc.lib/getput/TestFIFOLevel where {
+import GetPut;
+	     
+import FIFOLevel;
+		
+import Connectable;
+		  
+{-# properties sysTestFIFOLevel = { verilog } #-};
+						 
+sysTestFIFOLevel :: (Prelude.IsModule _m__ _c__) => _m__ Prelude.Empty;
+sysTestFIFOLevel = 
+    module {
+      inf :: FIFOLevelIfc (Prelude.Int 32) 4 <- mkFIFOLevel;
+      outf :: FIFOLevelIfc (Prelude.Int 32) 12 <- mkFIFOLevel;
+      c :: Reg (Bit 10) <- mkReg 0;
+      d :: Reg (Prelude.Int 32) <- mkReg 0;
+      Prelude.addRules
+	(rules {
+	   
+	   "cnt":  when Prelude.True
+		    ==>
+		      action { c := (c `Prelude.(+)` 1);
+			       if c `Prelude.(>)` 50 then action { $finish 0; } else action { };
+			       };
+	   
+	   "inr":  when (c[0:0] `Prelude.(==)` 0) `Prelude.(&&)` inf.isLessThan 3
+		    ==>
+		      action { inf.enq d; d := (d `Prelude.(+)` 1); };
+	   
+	   "outr":  when c[2:0] `Prelude.(<=)` 3
+		     ==>
+		       action { outf.deq; $display "%d: got data: %d" c outf.first; }
+	 });
+      letseq gf =  toGet inf;;
+      letseq pf =  toPut outf;;
+      mkConnection gf pf;
+      Prelude.return
+	(interface Prelude.Empty {
+	 })
+    };
+}
+
