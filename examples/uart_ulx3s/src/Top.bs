@@ -18,7 +18,6 @@ mkCounter =
     rules
       "count" : when True ==> action
         $display (counter)
-        counter := if (counter == hi_value) then 0 else (counter + 1)
         counter := case counter of
                      hi_value -> 0
                      _        -> counter + 1
