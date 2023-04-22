@@ -1,0 +1,15 @@
+package Top where
+
+interface ITop = 
+  led    ::  Bit 8            {-# always_ready #-}
+  btn    :: (Bit 6) -> Action {-# always_enabled #-}
+
+{-# properties mkTop={verilog} #-}
+mkTop :: Module (ITop)
+mkTop = 
+  module
+    led_reg :: Reg(Bit 8) <- mkReg(0)
+    interface
+      led = led_reg
+      btn bit_vals = do
+        led_reg := (2'b0) ++ bit_vals
