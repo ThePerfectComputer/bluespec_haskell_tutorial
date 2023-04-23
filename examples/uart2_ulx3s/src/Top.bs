@@ -1,0 +1,15 @@
+package Top where
+
+interface ITop = 
+  ftdi_rxd    ::  Bit 1            {-# always_ready #-}
+  ftdi_txd    :: (Bit 1) -> Action {-# always_enabled #-}
+
+{-# properties mkTop={verilog} #-}
+mkTop :: Module (ITop)
+mkTop = 
+  module
+    ftdi_reg :: Reg(Bit 1) <- mkReg(0)
+    interface
+      ftdi_rxd = ftdi_reg
+      ftdi_txd bit = do
+        ftdi_reg := bit
