@@ -73,37 +73,43 @@ interface (UartRx :: # -> *) interval =
 --       put_rx_bit bit_val = do
 --         rx_in := bit_val
 
-mkTop :: Module (Empty)
+interface ULX3SUART =
+    led :: Bit 8                  {-# always_ready #-}
+    ftdi_txd :: Bit 1             {-# always_ready #-}
+    ftdi_rxd :: (Bit 1) -> Action {-# always_enabled #-}
+
+{-# properties mkTop={verilog} #-}
+mkTop :: Module (ULX3SUART) 
 mkTop = 
   module
-    sync_regs <- replicateM 2 (mkReg (0 :: UInt 2))
-    let list1 :: List (UInt 32)  = (map fromInteger (upto 1 4))
-    let list2 :: List (UInt 32)  = (map fromInteger (upto 2 9))
-    -- let list3 :: List (UInt 32, UInt 32) = zip list1 list2
-    let list3 = zip list1 list2
-    counter <- mkReg(0 :: UInt 32)
+    led_reg :: Reg(Bit 8) <- mkReg(0)
+    uart :: UART(8) <- mkUART
+                         (8 :: Bit 4) 
+                         (NONE :: RS232.Parity) 
+                         (STOP_1 :: RS232.StopBits) 
+                         (2604 :: Bit 16)
 
     rules
-      "reg_chain" : when True ==> action
-        (sync_regs !! 0) := readReg (sync_regs !! 1)
-      "simulate" : when counter < 5 ==> action
-        counter := counter + 1
-        if counter == 1 then
-          do
-            $finish
-        else action {}
-        $display (fshow list3)
-    -- return Empty
+      "connect": when True ==> action
+        tx_data <- uart.tx.get
+        uart.rx.put (tx_data + 1)
+        led_reg := tx_data
+
+    interface
+      ftdi_txd = uart.rs232.sout
+      ftdi_rxd bit = uart.rs232.sin bit
+      led = led_reg
+
 
 mkSim :: Module Empty
 mkSim =
   module
     my_counter :: Counter(3) <- mkCounter
-    uart :: UART(8) <- mkUART {
+    uart :: UART(8) <- mkUART
                          (8 :: Bit 4) 
                          (NONE :: RS232.Parity) 
                          (STOP_1 :: RS232.StopBits) 
-                         (12500 :: Bit 16)}
+                         (12500 :: Bit 16)
     cycle  <- mkReg(0 :: UInt 32)
 
     rules

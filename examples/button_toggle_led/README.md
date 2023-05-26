@@ -1,12 +1,6 @@
-A simple blinky example meant to be programmed into the ULX3S FPGA.
+A simple design that allows you to push buttons to illuminate LEDs.
 
-The design build process is split up into two parts: simulation and Verilog generation.
-To change between simulating and generating verilog, the top module must be specified
-using ``TOPMODULE=``, for example:
-
-``TOPMODULE=mkSim make b_compile b_link b_sim`` to simulate and
-
-``TOPMODULE=mkBlinky make v_compile`` to generate verilog. The generated verilog can
+``TOPMODULE=mkTop make v_compile`` to generate verilog. The generated verilog can
 be found in the ``verilog_RTL/`` folder.
 
 # Programming the ULX3S
@@ -19,31 +13,12 @@ You'll need to install:
 4. [openFPGALoader](https://github.com/trabucayre/openFPGALoader)
 
 # Simulation
-```bash
-TOPMODULE=mkSim make b_compile b_link b_sim
-
-# some output snipped
-Bluesim simulation ...
-./mkSim_b_sim
-cycle =    4194304
-dut.led =   1
-cycle =    8388608
-dut.led =   2
-cycle =   12582912
-dut.led =   3
-cycle =   16777216
-dut.led =   4
-cycle =   20971520
-dut.led =   5
-cycle =   25165824
-dut.led =   6
-Bluesim simulation finished
-```
+TODO
 
 # Generating Verilog
 
 ```bash
-TOPMODULE=mkBlinky make v_compile
+TOPMODULE=mkTop make v_compile
 
 # some output truncated
 compiling src/Top.bs

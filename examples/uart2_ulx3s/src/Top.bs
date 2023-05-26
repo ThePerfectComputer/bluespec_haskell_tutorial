@@ -1,15 +1,107 @@
-package Top where
+-- TOPMODULE=mkTop make b_compile
+package Top(mkClkDivider, ClkDivider(..)) where
+
+data State = IDLE | START | DATA (UInt (TLog 8)) | PARITY | STOP
+  deriving (Bits, Eq, FShow)
+
+type FCLK = 25_000_000
+type BAUD = 9_600
+
+interface (ClkDivider :: # -> *) hi =
+  {
+  reset :: Action
+  ;isAdvancing :: Bool
+  ;isHalfCycle :: Bool
+  }
+
+mkClkDivider :: Module (ClkDivider hi)
+mkClkDivider = do
+    counter <- mkReg(0 :: UInt (TLog hi))   
+    counting <- mkReg(False)
+    let hi_value :: UInt (TLog hi) = (fromInteger $ valueOf hi)
+    let half_hi_value :: UInt (TLog hi) = (fromInteger $ valueOf (TDiv hi 2))
+
+    let val :: Real = (fromInteger $ valueOf hi)
+    let msg = "Clock Div Period : " + (realToString val)
+    -- messageM msg
+
+    fileHandle <- openFile "compile.log" WriteMode 
+    hPutStr fileHandle msg
+    hClose fileHandle
+
+    addRules $
+      rules
+        "tick" : when True ==> action
+          $display (counter)
+          counter := if (counter == hi_value)
+                    then 0
+                    else counter + 1
+    
+    return $
+      interface ClkDivider
+        reset :: Action
+        reset = do
+          counter := 0
+        -- go = do
+        --   counting := True
+        isAdvancing :: Bool
+        isAdvancing = (counter == hi_value)
+        isHalfCycle = (counter == half_hi_value)
+
+uartStateMachine :: Reg State -> (ClkDivider hi) -> (Bit 1) -> Action
+uartStateMachine currState clkDivider rx_bit = 
+  case currState of 
+    IDLE    when rx_bit == 0  -> do
+      currState := START
+      clkDivider.reset
+    START   when rx_bit == 0, clkDivider.isAdvancing -> currState := DATA(7)
+    DATA(7) when clkDivider.isAdvancing -> currState := PARITY
+    DATA(n) when clkDivider.isAdvancing -> currState := DATA(n + 1)
+    PARITY  when clkDivider.isAdvancing -> currState := STOP
+    _ -> currState := IDLE
 
 interface ITop = 
-  ftdi_rxd    ::  Bit 1            {-# always_ready #-}
-  ftdi_txd    :: (Bit 1) -> Action {-# always_enabled #-}
+  ftdiRxd    ::  Bit 1            {-# always_ready #-}
+  led         ::  Bit 8            {-# always_ready #-}
+  ftdiTxd    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
 
 {-# properties mkTop={verilog} #-}
 mkTop :: Module (ITop)
-mkTop = 
-  module
-    ftdi_reg :: Reg(Bit 1) <- mkReg(0)
-    interface
-      ftdi_rxd = ftdi_reg
-      ftdi_txd bit = do
-        ftdi_reg := bit
+mkTop = do
+  -- figure out why changing to wire below doesn't work
+  ftdiRxIn :: Reg(Bit 1) <- mkReg(0)
+  letOutTemp :: Reg(Bit 8) <- mkReg(255)
+  ftdiState <- mkReg(IDLE)
+  clkDivider :: (ClkDivider (TDiv FCLK BAUD)) <- mkClkDivider
+
+  addRules $
+    rules
+      "rx" : when True ==> action
+        uartStateMachine ftdiState clkDivider ftdiRxIn
+        -- $display (counter)
+        -- counter := if (counter == hi_value)
+        --           then 0
+        --           else counter + 1
+
+  return $
+    interface ITop
+    {led      = letOutTemp
+     ;ftdiRxd = ftdiRxIn
+     -- change below to do notation
+     ;ftdiTxd bit = ftdiRxIn := bit
+    }
+
+mkSim :: Module Empty
+mkSim = do
+  -- count :: Reg(UInt 3) <- mkReg(0)
+  count :: Reg(UInt 3) <- mkReg(0)
+  addRules $
+    rules
+      "count" : when True ==> action
+        count := unpack ((1'b1) ++ (pack count)[2:1])
+        $display count
+      "end sim" : when (count == 6) ==> action
+        $finish
+
+  return $
+    interface Empty

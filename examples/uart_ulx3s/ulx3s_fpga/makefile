@@ -1,6 +1,6 @@
 BSV_PATH=$(shell dirname $(shell which bsc))/..
 BSV_LIBS=$(BSV_PATH)/lib/Verilog
-TOPMODULE=mkBlinky
+TOPMODULE=mkTop
 IDCODE ?= 0x41113043 # 85f
 
 all: prog
@@ -13,6 +13,7 @@ $(TOPMODULE).json: ../verilog_RTL/$(TOPMODULE).v
 		-p "synth_ecp5 -top $(TOPMODULE) -json $@" \
 		-E $(TOPMODULE).d \
 		$< \
+		$(BSV_LIBS)/SizedFIFO.v \
 		$(BSV_LIBS)/Counter.v
 
 $(TOPMODULE).config: $(TOPMODULE).json

@@ -12,7 +12,7 @@ FREQUENCY PORT "CLK" 25 MHZ;
 SYSCONFIG CONFIG_IOVOLTAGE=3.3 COMPRESS_CONFIG=ON MCCLK_FREQ=62 MASTER_SPI_PORT=DISABLE SLAVE_SPI_PORT=DISABLE SLAVE_PARALLEL_PORT=DISABLE;
 
 ## USBSERIAL FTDI-FPGA serial port "usb" sheet
-LOCATE COMP "ftdi_rxd" SITE "L4"; # FPGA transmits to ftdi
+LOCATE COMP "ftdi_rxd_1" SITE "L4"; # FPGA transmits to ftdi
 LOCATE COMP "ftdi_txd" SITE "M1"; # FPGA receives from ftdi
 LOCATE COMP "ftdi_nrts" SITE "M3"; # FPGA receives
 LOCATE COMP "ftdi_ndtr" SITE "N1"; # FPGA receives
