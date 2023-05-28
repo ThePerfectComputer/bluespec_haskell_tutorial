@@ -17,7 +17,6 @@ interface (ClkDivider :: # -> *) hi =
 mkClkDivider :: Module (ClkDivider hi)
 mkClkDivider = do
     counter <- mkReg(0 :: UInt (TLog hi))   
-    counting <- mkReg(False)
     let hi_value :: UInt (TLog hi) = (fromInteger $ valueOf hi)
     let half_hi_value :: UInt (TLog hi) = (fromInteger $ valueOf (TDiv hi 2))
 
@@ -31,6 +30,8 @@ mkClkDivider = do
 
     addRules $
       rules
+        {-# ASSERT fire when enabled #-}
+        {-# ASSERT no implicit conditions #-}
         "tick" : when True ==> action
           $display (counter)
           counter := if (counter == hi_value)
@@ -42,53 +43,73 @@ mkClkDivider = do
         reset :: Action
         reset = do
           counter := 0
-        -- go = do
-        --   counting := True
+
         isAdvancing :: Bool
         isAdvancing = (counter == hi_value)
         isHalfCycle = (counter == half_hi_value)
 
-uartStateMachine :: Reg State -> (ClkDivider hi) -> (Bit 1) -> Action
-uartStateMachine currState clkDivider rx_bit = 
-  case currState of 
-    IDLE    when rx_bit == 0  -> do
-      currState := START
-      clkDivider.reset
-    START   when rx_bit == 0, clkDivider.isAdvancing -> currState := DATA(7)
-    DATA(7) when clkDivider.isAdvancing -> currState := PARITY
-    DATA(n) when clkDivider.isAdvancing -> currState := DATA(n + 1)
-    PARITY  when clkDivider.isAdvancing -> currState := STOP
-    _ -> currState := IDLE
-
 interface ITop = 
-  ftdiRxd    ::  Bit 1            {-# always_ready #-}
+  ftdi_rxd    ::  Bit 1            {-# always_ready #-}
   led         ::  Bit 8            {-# always_ready #-}
-  ftdiTxd    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
+  ftdi_txd    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
 
 {-# properties mkTop={verilog} #-}
 mkTop :: Module (ITop)
 mkTop = do
   -- figure out why changing to wire below doesn't work
   ftdiRxIn :: Reg(Bit 1) <- mkReg(0)
-  letOutTemp :: Reg(Bit 8) <- mkReg(255)
+  ledOutTemp :: Reg(Bit 8) <- mkReg(255)
+  shiftReg :: Reg(Bit 8) <- mkReg(0)
   ftdiState <- mkReg(IDLE)
+
   clkDivider :: (ClkDivider (TDiv FCLK BAUD)) <- mkClkDivider
 
   addRules $
     rules
-      "rx" : when True ==> action
-        uartStateMachine ftdiState clkDivider ftdiRxIn
-        -- $display (counter)
-        -- counter := if (counter == hi_value)
-        --           then 0
-        --           else counter + 1
+
+      {-# ASSERT fire when enabled #-}
+      "exitIDLE" : when (ftdiState == IDLE), (ftdiRxIn == 0) ==>
+        do
+          clkDivider.reset
+          ftdiState := START 
+
+      {-# ASSERT fire when enabled #-}
+      "exitSTART" : when (ftdiState == START), (clkDivider.isAdvancing) ==>
+        do
+          ftdiState := DATA(0)
+
+      {-# ASSERT fire when enabled #-}
+      "captureData" : 
+        when 
+          DATA(n) <- ftdiState,
+          n >= 0,
+          n <= 7, 
+          let sampleTrigger = clkDivider.isHalfCycle
+            in sampleTrigger
+          ==>
+            do
+              ftdiState := 
+                if n == 7
+                  then PARITY
+                  else DATA(n + 1)
+              shiftReg := ftdiRxIn ++ shiftReg[7:1]
+
+      {-# ASSERT fire when enabled #-}
+      "exitPARITY" : when (ftdiState == PARITY), (clkDivider.isAdvancing) ==>
+        do
+          ftdiState := STOP
+
+      {-# ASSERT fire when enabled #-}
+      "exitSTOP" : when (ftdiState == STOP), (clkDivider.isAdvancing) ==>
+        do
+          ftdiState := IDLE
 
   return $
     interface ITop
-    {led      = letOutTemp
-     ;ftdiRxd = ftdiRxIn
+    {led      = shiftReg
+     ;ftdi_rxd = ftdiRxIn
      -- change below to do notation
-     ;ftdiTxd bit = ftdiRxIn := bit
+     ;ftdi_txd bit = ftdiRxIn := bit
     }
 
 mkSim :: Module Empty
