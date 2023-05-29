@@ -14,8 +14,8 @@ interface (ClkDivider :: # -> *) hi =
   ;isHalfCycle :: Bool
   }
 
-mkClkDivider :: Module (ClkDivider hi)
-mkClkDivider = do
+mkClkDivider :: Handle -> Module (ClkDivider hi)
+mkClkDivider fileHandle = do
     counter <- mkReg(0 :: UInt (TLog hi))   
     let hi_value :: UInt (TLog hi) = (fromInteger $ valueOf hi)
     let half_hi_value :: UInt (TLog hi) = (fromInteger $ valueOf (TDiv hi 2))
@@ -24,9 +24,9 @@ mkClkDivider = do
     let msg = "Clock Div Period : " + (realToString val)
     -- messageM msg
 
-    fileHandle <- openFile "compile.log" WriteMode 
     hPutStr fileHandle msg
-    hClose fileHandle
+    hPutStr fileHandle genModuleName
+    -- hClose fileHandle
 
     addRules $
       rules
@@ -48,38 +48,34 @@ mkClkDivider = do
         isAdvancing = (counter == hi_value)
         isHalfCycle = (counter == half_hi_value)
 
-interface ITop = 
-  ftdi_rxd    ::  Bit 1            {-# always_ready #-}
-  led         ::  Bit 8            {-# always_ready #-}
-  ftdi_txd    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
+interface (IDeserializer :: # -> # -> *) clkFreq baudRate = 
+  get         ::  Bit 8            {-# always_ready #-}
+  putBitIn    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
 
-{-# properties mkTop={verilog} #-}
-mkTop :: Module (ITop)
-mkTop = do
+mkDeserialize :: Handle -> Module (IDeserializer clkFreq baudRate)
+mkDeserialize fileHandle = do
   -- figure out why changing to wire below doesn't work
-  ftdiRxIn :: Reg(Bit 1) <- mkReg(0)
-  ledOutTemp :: Reg(Bit 8) <- mkReg(255)
+  ftdiRxIn :: Wire(Bit 1) <- mkBypassWire
   shiftReg :: Reg(Bit 8) <- mkReg(0)
   ftdiState <- mkReg(IDLE)
 
-  clkDivider :: (ClkDivider (TDiv FCLK BAUD)) <- mkClkDivider
+  clkDivider :: (ClkDivider (TDiv clkFreq baudRate)) <- mkClkDivider fileHandle
 
   addRules $
     rules
 
       {-# ASSERT fire when enabled #-}
-      "exitIDLE" : when (ftdiState == IDLE), (ftdiRxIn == 0) ==>
+      when (ftdiState == IDLE), (ftdiRxIn == 0) ==>
         do
           clkDivider.reset
           ftdiState := START 
 
       {-# ASSERT fire when enabled #-}
-      "exitSTART" : when (ftdiState == START), (clkDivider.isAdvancing) ==>
+      when (ftdiState == START), (clkDivider.isAdvancing) ==>
         do
           ftdiState := DATA(0)
 
       {-# ASSERT fire when enabled #-}
-      "captureData" : 
         when 
           DATA(n) <- ftdiState,
           n >= 0,
@@ -95,22 +91,49 @@ mkTop = do
               shiftReg := ftdiRxIn ++ shiftReg[7:1]
 
       {-# ASSERT fire when enabled #-}
-      "exitPARITY" : when (ftdiState == PARITY), (clkDivider.isAdvancing) ==>
+      when (ftdiState == PARITY), (clkDivider.isAdvancing) ==>
         do
           ftdiState := STOP
 
       {-# ASSERT fire when enabled #-}
-      "exitSTOP" : when (ftdiState == STOP), (clkDivider.isAdvancing) ==>
+      when (ftdiState == STOP), (clkDivider.isAdvancing) ==>
         do
           ftdiState := IDLE
 
   return $
-    interface ITop
-    {led      = shiftReg
-     ;ftdi_rxd = ftdiRxIn
-     -- change below to do notation
-     ;ftdi_txd bit = ftdiRxIn := bit
+    interface IDeserializer
+    {get      = shiftReg when (ftdiState == STOP), (clkDivider.isAdvancing)
+    ;putBitIn bit = ftdiRxIn := bit
     }
+
+interface ITop = 
+  ftdi_rxd    ::  Bit 1            {-# always_ready #-}
+  led         ::  Bit 8            {-# always_ready #-}
+  ftdi_txd    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
+
+{-# properties mkTop={verilog} #-}
+mkTop :: Module (ITop)
+mkTop = do
+
+  fileHandle <- openFile "compile.log" WriteMode 
+
+  serializer :: (IDeserializer FCLK BAUD) <- mkDeserialize fileHandle
+  ftdiBitIn  :: Wire(Bit 1)       <- mkBypassWire
+  rxReg      :: Reg(Bit 8) <- mkReg(0)
+
+  addRules $
+    rules
+      when True ==>
+        rxReg := serializer.get
+      
+      when True ==>
+        serializer.putBitIn ftdiBitIn
+
+  return $
+    interface ITop
+    {ftdi_rxd = ftdiBitIn
+    ;led = rxReg
+    ;ftdi_txd bitIn = ftdiBitIn := bitIn}
 
 mkSim :: Module Empty
 mkSim = do
