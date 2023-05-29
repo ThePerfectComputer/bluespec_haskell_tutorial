@@ -40,7 +40,7 @@ Many concepts from haskell will likely carry over.
 
 Haskell is often presented as being hard to approach, but with the right amount of
 dedication, I would like to claim that Haskell can become approachable and often 
-even erfreshing and beautiful - as long as you stay away from going crazy with custom
+even refreshing and beautiful - as long as you stay away from going crazy with custom
 operators and custom operator precedence.
 
 Below, I suggest an order in which the included example should be examined:
@@ -82,3 +82,30 @@ brew icarus-verilog verilator
 
 If you want to program the ULX3S FPGA, you'll need the tools listed 
 [here](https://github.com/BracketMaster/bluespec_haskell_tutorial/tree/main/examples/blinky_ulx3s#programming-the-ulx3s).
+
+# TODO and Thoughts
+## UART
+ - add nested logging support
+ - ask about synthesis boundaries
+ - I think I prefer to keep FIFOs on the in ports of parent modules
+ - add serializer
+ - back to back SERDES that reads from BRAM in simulation
+ - but on actual FPGA, just serialize from Ram and observe over screen
+   - may need to init ram
+ - stress test UART
+
+ - add instruction on final tutorial in bluespec_haskell_tutorial repo
+ - remove other UART folder
+
+## CPU Work
+ - create separate CPU project
+ - create I and D cache
+ - arbiter between I+D cache and main memory
+ - memory adapter between cache and LDST unit
+ - transform
+
+## General
+ - It could make sense for interfaces modules, to have inputs as
+a parameter of the module instantiation function, since interface
+inputs are directly connected to the outside world, and cannot be
+manipulated by the top module, before arriving at the top module
