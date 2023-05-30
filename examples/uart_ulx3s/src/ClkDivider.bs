@@ -1,0 +1,40 @@
+package ClkDivider(mkClkDivider, ClkDivider(..)) where
+
+interface (ClkDivider :: # -> *) hi =
+  {
+  reset :: Action
+  ;isAdvancing :: Bool
+  ;isHalfCycle :: Bool
+  }
+
+mkClkDivider :: Handle -> Module (ClkDivider hi)
+mkClkDivider fileHandle = do
+    counter <- mkReg(0 :: UInt (TLog hi))   
+    let hi_value :: UInt (TLog hi) = (fromInteger $ valueOf hi)
+    let half_hi_value :: UInt (TLog hi) = (fromInteger $ valueOf (TDiv hi 2))
+
+    let val :: Real = (fromInteger $ valueOf hi)
+    let msg = "Clock Div Period : " + (realToString val)
+
+    hPutStr fileHandle msg
+    hPutStr fileHandle genModuleName
+
+    addRules $
+      rules
+        {-# ASSERT fire when enabled #-}
+        {-# ASSERT no implicit conditions #-}
+        "tick" : when True ==> action
+          $display (counter)
+          counter := if (counter == hi_value)
+                    then 0
+                    else counter + 1
+    
+    return $
+      interface ClkDivider
+        reset :: Action
+        reset = do
+          counter := 0
+
+        isAdvancing :: Bool
+        isAdvancing = (counter == hi_value)
+        isHalfCycle = (counter == half_hi_value)

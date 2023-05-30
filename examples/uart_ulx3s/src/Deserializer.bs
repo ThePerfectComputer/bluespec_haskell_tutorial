@@ -1,0 +1,64 @@
+package Deserializer(mkDeserialize, IDeserializer(..), State(..)) where
+
+import ClkDivider
+
+data State = IDLE | START | DATA (UInt (TLog 8)) | PARITY | STOP
+  deriving (Bits, Eq, FShow)
+
+interface (IDeserializer :: # -> # -> *) clkFreq baudRate = 
+  get         ::  Bit 8            {-# always_ready #-}
+  putBitIn    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
+
+mkDeserialize :: Handle -> Module (IDeserializer clkFreq baudRate)
+mkDeserialize fileHandle = do
+  -- figure out why changing to wire below doesn't work
+  ftdiRxIn :: Wire(Bit 1) <- mkBypassWire
+  shiftReg :: Reg(Bit 8) <- mkReg(0)
+  ftdiState <- mkReg(IDLE)
+
+  clkDivider :: (ClkDivider (TDiv clkFreq baudRate)) <- mkClkDivider fileHandle
+
+  addRules $
+    rules
+
+      {-# ASSERT fire when enabled #-}
+      when (ftdiState == IDLE), (ftdiRxIn == 0) ==>
+        do
+          clkDivider.reset
+          ftdiState := START 
+
+      {-# ASSERT fire when enabled #-}
+      when (ftdiState == START), (clkDivider.isAdvancing) ==>
+        do
+          ftdiState := DATA(0)
+
+      {-# ASSERT fire when enabled #-}
+        when 
+          DATA(n) <- ftdiState,
+          n >= 0,
+          n <= 7, 
+          let sampleTrigger = clkDivider.isHalfCycle
+            in sampleTrigger
+          ==>
+            do
+              ftdiState := 
+                if n == 7
+                  then PARITY
+                  else DATA(n + 1)
+              shiftReg := ftdiRxIn ++ shiftReg[7:1]
+
+      {-# ASSERT fire when enabled #-}
+      when (ftdiState == PARITY), (clkDivider.isAdvancing) ==>
+        do
+          ftdiState := STOP
+
+      {-# ASSERT fire when enabled #-}
+      when (ftdiState == STOP), (clkDivider.isAdvancing) ==>
+        do
+          ftdiState := IDLE
+
+  return $
+    interface IDeserializer
+    {get      = shiftReg when (ftdiState == STOP), (clkDivider.isAdvancing)
+    ;putBitIn bit = ftdiRxIn := bit
+    }

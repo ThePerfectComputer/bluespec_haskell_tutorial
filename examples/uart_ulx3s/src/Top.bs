@@ -1,121 +1,51 @@
-package Top where
-import List
-import GetPut
-import RS232
+-- TOPMODULE=mkTop make b_compile
+package Top(mkTop, ITop(..), mkSim) where
 
+import Deserializer
 
-interface (Counter :: # -> *) hi =
-  reset :: Action
-  isSaturated :: Bool
+type FCLK = 25_000_000
+type BAUD = 9_600
 
-mkCounter :: Module (Counter hi)
-mkCounter = 
-  module
-    counter <- mkReg(0 :: UInt (TLog hi))   
-    let hi_value :: UInt (TLog hi) = (fromInteger $ valueOf hi)
-
-    rules
-      "count" : when True ==> action
-        $display (counter)
-        counter := if (counter == hi_value)
-                   then 0
-                   else counter + 1
-    
-    interface
-      reset :: Action
-      reset = do
-        counter := 0
-      isSaturated :: Bool
-      isSaturated = (counter == hi_value)
-
-data RxState = Idle | Start | Data | Parity | Stop
-                deriving(Bits, Eq, FShow)
-
-interface (UartRx :: # -> *) interval =
-  put_rx_bit  :: (Bit 1) -> Action
-  get_rx_char :: ActionValue Char
-
--- mkUartRx :: Module (UartRx interval)
--- mkUartRx = 
---   module
---     rx_in            :: Wire (Bit 1) <- mkWire
---     rx_in_previous   :: Reg  (Maybe (Bit 1)) <- mkReg (Invalid)
---     rx_captured      :: Wire (Maybe (Bit 1)) <- mkWire
---     rx_bits_recorded :: Reg  (UInt (TLog 8)) <- mkReg (0)
---     thing <- mkReg(True)
-
---     -- let num = 3
---     -- let num_bits      =  log2 $ fromInteger interval
---     interval_counter :: Counter(interval) <- mkCounter
-
---     rx_state          :: Reg(RxState) <- mkReg(Idle)
-
---     rules
---       "register_rx" : when True ==> action
---         rx_in_previous  := Valid rx_in
---         rx_captured     := case (rx_in_previous, rx_in) of 
---                               (Valid 1, 1) -> Valid 1
---                               (Valid 0, 0) -> Valid 0
---                               (_,_)        -> Invalid
-
---       "value_captured":
---         when Valid 1 <- rx_captured
---           ==> action
---             thing := False
-
---     let get = do {return ('a' :: Char)}
-
---     interface 
---       get_rx_char :: ActionValue Char
---       get_rx_char = get
-
---       put_rx_bit :: (Bit 1) -> Action
---       put_rx_bit bit_val = do
---         rx_in := bit_val
-
-interface ULX3SUART =
-    led :: Bit 8                  {-# always_ready #-}
-    ftdi_txd :: Bit 1             {-# always_ready #-}
-    ftdi_rxd :: (Bit 1) -> Action {-# always_enabled #-}
+interface ITop = 
+  ftdi_rxd    ::  Bit 1            {-# always_ready #-}
+  led         ::  Bit 8            {-# always_ready #-}
+  ftdi_txd    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
 
 {-# properties mkTop={verilog} #-}
-mkTop :: Module (ULX3SUART) 
-mkTop = 
-  module
-    led_reg :: Reg(Bit 8) <- mkReg(0)
-    uart :: UART(8) <- mkUART
-                         (8 :: Bit 4) 
-                         (NONE :: RS232.Parity) 
-                         (STOP_1 :: RS232.StopBits) 
-                         (2604 :: Bit 16)
+mkTop :: Module (ITop)
+mkTop = do
 
+  fileHandle <- openFile "compile.log" WriteMode 
+
+  serializer :: (IDeserializer FCLK BAUD) <- mkDeserialize fileHandle
+  ftdiBitIn  :: Wire(Bit 1)       <- mkBypassWire
+  rxReg      :: Reg(Bit 8) <- mkReg(0)
+
+  addRules $
     rules
-      "connect": when True ==> action
-        tx_data <- uart.tx.get
-        uart.rx.put (tx_data + 1)
-        led_reg := tx_data
+      when True ==>
+        rxReg := serializer.get
+      
+      when True ==>
+        serializer.putBitIn ftdiBitIn
 
-    interface
-      ftdi_txd = uart.rs232.sout
-      ftdi_rxd bit = uart.rs232.sin bit
-      led = led_reg
-
+  return $
+    interface ITop
+    {ftdi_rxd = ftdiBitIn
+    ;led = rxReg
+    ;ftdi_txd bitIn = ftdiBitIn := bitIn}
 
 mkSim :: Module Empty
-mkSim =
-  module
-    my_counter :: Counter(3) <- mkCounter
-    uart :: UART(8) <- mkUART
-                         (8 :: Bit 4) 
-                         (NONE :: RS232.Parity) 
-                         (STOP_1 :: RS232.StopBits) 
-                         (12500 :: Bit 16)
-    cycle  <- mkReg(0 :: UInt 32)
-
+mkSim = do
+  -- count :: Reg(UInt 3) <- mkReg(0)
+  count :: Reg(UInt 3) <- mkReg(0)
+  addRules $
     rules
-      "incr cycle": when True ==> action
-        cycle := cycle + 1
-        $display "my_counter " my_counter.isSaturated
-
-      "end sim": when (cycle == 6) ==> action
+      "count" : when True ==> action
+        count := unpack ((1'b1) ++ (pack count)[2:1])
+        $display count
+      "end sim" : when (count == 6) ==> action
         $finish
+
+  return $
+    interface Empty
