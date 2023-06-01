@@ -1,0 +1,20 @@
+package State(
+  State(..),
+  ftdiState') where
+
+data State = IDLE 
+           | START 
+           | DATA (UInt (TLog 8)) 
+           | PARITY 
+           | STOP
+           deriving (Bits, Eq, FShow)
+
+ftdiState' :: State -> State
+ftdiState' state = 
+  case state of
+    IDLE    -> START
+    START   -> DATA(0)
+    DATA(7) -> PARITY
+    DATA(n) -> DATA(n+1)
+    PARITY  -> STOP
+    STOP    -> IDLE

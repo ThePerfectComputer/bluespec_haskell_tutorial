@@ -1,9 +1,12 @@
-package Deserializer(mkDeserialize, IDeserializer(..), State(..)) where
+package Deserializer(
+  mkDeserialize,
+  IDeserializer(..),
+  State(..)) 
+  where
 
 import ClkDivider
+import State
 
-data State = IDLE | START | DATA (UInt (TLog 8)) | PARITY | STOP
-  deriving (Bits, Eq, FShow)
 
 interface (IDeserializer :: # -> # -> *) clkFreq baudRate = 
   get         ::  Bit 8            {-# always_ready #-}
@@ -11,7 +14,6 @@ interface (IDeserializer :: # -> # -> *) clkFreq baudRate =
 
 mkDeserialize :: Handle -> Module (IDeserializer clkFreq baudRate)
 mkDeserialize fileHandle = do
-  -- figure out why changing to wire below doesn't work
   ftdiRxIn :: Wire(Bit 1) <- mkBypassWire
   shiftReg :: Reg(Bit 8) <- mkReg(0)
   ftdiState <- mkReg(IDLE)
@@ -22,18 +24,18 @@ mkDeserialize fileHandle = do
     rules
 
       {-# ASSERT fire when enabled #-}
-      when (ftdiState == IDLE), (ftdiRxIn == 0) ==>
+      "IDLE" : when (ftdiState == IDLE), (ftdiRxIn == 0) ==>
         do
           clkDivider.reset
-          ftdiState := START 
+          ftdiState := ftdiState' ftdiState
 
       {-# ASSERT fire when enabled #-}
-      when (ftdiState == START), (clkDivider.isAdvancing) ==>
+      "NOT IDLE" : when (ftdiState /= IDLE), (clkDivider.isAdvancing) ==>
         do
-          ftdiState := DATA(0)
+          ftdiState := ftdiState' ftdiState
 
       {-# ASSERT fire when enabled #-}
-        when 
+        "SAMPLING" : when 
           DATA(n) <- ftdiState,
           n >= 0,
           n <= 7, 
@@ -41,21 +43,7 @@ mkDeserialize fileHandle = do
             in sampleTrigger
           ==>
             do
-              ftdiState := 
-                if n == 7
-                  then PARITY
-                  else DATA(n + 1)
               shiftReg := ftdiRxIn ++ shiftReg[7:1]
-
-      {-# ASSERT fire when enabled #-}
-      when (ftdiState == PARITY), (clkDivider.isAdvancing) ==>
-        do
-          ftdiState := STOP
-
-      {-# ASSERT fire when enabled #-}
-      when (ftdiState == STOP), (clkDivider.isAdvancing) ==>
-        do
-          ftdiState := IDLE
 
   return $
     interface IDeserializer
