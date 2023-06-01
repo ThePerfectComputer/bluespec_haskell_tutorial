@@ -1,6 +1,6 @@
-package Deserializer(
-  mkSeserialize,
-  ISeserializer(..),
+package Serializer(
+  mkSerialize,
+  ISerializer(..),
   State(..)) 
   where
 
@@ -11,18 +11,15 @@ serialize :: State -> Bit 8 -> Bit 1
 serialize ftdiState dataReg =
     case ftdiState of
         START    -> 1'b0
-        (DATA n) -> dataReg[0]
+        (DATA n) -> dataReg[n:n]
         _        -> 1'b1
--- serialize START _ = 1'b0
--- serialize (DATA n) data = data[n]
--- serialize _ _ = 1'b1
 
-interface (ISeserializer :: # -> # -> *) clkFreq baudRate = 
+interface (ISerializer :: # -> # -> *) clkFreq baudRate = 
   putBit8    :: (Bit 8) -> Action {-# always_enabled, always_ready #-}
   bitLineOut ::  Bit 1            {-# always_ready #-}
 
-mkSeserialize :: Handle -> Module (IDeserializer clkFreq baudRate)
-mkSeserialize fileHandle = do
+mkSerialize :: Handle -> Module (ISerializer clkFreq baudRate)
+mkSerialize fileHandle = do
 
   ftdiTxOut :: Wire(Bit 1) <- mkBypassWire
   dataReg  :: Reg(Bit 8) <- mkReg(0)
@@ -44,11 +41,12 @@ mkSeserialize fileHandle = do
           ftdiTxOut := serialize ftdiState dataReg
 
   return $
-    interface ISeserializer
-    {putBit8  bit8Val = 
-        clkDivider.reset
-        dataReg := bit8Val 
-        ftdiState := ftdiState' ftdiState
+    interface ISerializer
+      putBit8  bit8Val = 
+        do
+          clkDivider.reset
+          dataReg := bit8Val 
+          ftdiState := ftdiState' ftdiState
         when (ftdiState == IDLE)
-    ;bitLineOut = ftdiTxOut
-    }
+      bitLineOut = ftdiTxOut
+    

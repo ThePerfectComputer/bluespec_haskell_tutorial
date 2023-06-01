@@ -18,21 +18,24 @@ mkTop = do
 
   fileHandle <- openFile "compile.log" WriteMode 
 
-  serializer :: (IDeserializer FCLK BAUD) <- mkDeserialize fileHandle
+  deserializer :: (IDeserializer FCLK BAUD) <- mkDeserialize fileHandle
+  serializer :: (ISerializer FCLK BAUD) <- mkSerialize fileHandle
   ftdiBitIn  :: Wire(Bit 1)       <- mkBypassWire
   rxReg      :: Reg(Bit 8) <- mkReg(0)
 
   addRules $
     rules
       when True ==>
-        rxReg := serializer.get
+        do
+          rxReg := deserializer.get
+          serializer.putBit8 $ deserializer.get
       
       when True ==>
-        serializer.putBitIn ftdiBitIn
+        deserializer.putBitIn ftdiBitIn
 
   return $
     interface ITop
-    {ftdi_rxd = ftdiBitIn
+    {ftdi_rxd = serializer.bitLineOut
     ;led = rxReg
     ;ftdi_txd bitIn = ftdiBitIn := bitIn}
 
