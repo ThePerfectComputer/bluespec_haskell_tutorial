@@ -2,6 +2,7 @@
 package Top(mkTop, ITop(..), mkSim) where
 
 import Deserializer
+import Serializer
 
 type FCLK = 25_000_000
 type BAUD = 9_600

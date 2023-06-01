@@ -9,7 +9,7 @@ import State
 
 
 interface (IDeserializer :: # -> # -> *) clkFreq baudRate = 
-  get         ::  Bit 8            {-# always_ready #-}
+  get         ::  Bit 8            
   putBitIn    :: (Bit 1) -> Action {-# always_enabled, always_ready #-}
 
 mkDeserialize :: Handle -> Module (IDeserializer clkFreq baudRate)
@@ -48,5 +48,6 @@ mkDeserialize fileHandle = do
   return $
     interface IDeserializer
     {get      = shiftReg when (ftdiState == STOP), (clkDivider.isAdvancing)
-    ;putBitIn bit = ftdiRxIn := bit
+    ;putBitIn bit = 
+      ftdiRxIn := bit
     }
