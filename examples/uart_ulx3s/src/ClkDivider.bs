@@ -14,7 +14,7 @@ mkClkDivider fileHandle = do
     let half_hi_value :: UInt (TLog hi) = (fromInteger $ valueOf (TDiv hi 2))
 
     let val :: Real = (fromInteger $ valueOf hi)
-    let msg = "Clock Div Period : " + (realToString val)
+    let msg = "Clock Div Period : " + (realToString val) + "\n"
 
     hPutStr fileHandle msg
     hPutStr fileHandle genModuleName

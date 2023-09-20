@@ -22,6 +22,7 @@ mkTop = do
   serializer :: (ISerializer FCLK BAUD) <- mkSerialize fileHandle
   ftdiBitIn  :: Wire(Bit 1)       <- mkBypassWire
   rxReg      :: Reg(Bit 8) <- mkReg(0)
+  messageM $ "Hallo!!" + (realToString 5)
 
   addRules $
     rules
