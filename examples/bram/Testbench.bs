@@ -1,0 +1,58 @@
+-- bsc -sim -u -g mkTestbench Testbench.bs; bsc -sim -e mkTestbench -o simBRAM;
+package Testbench where
+
+import BRAM
+import StmtFSM;
+import Clocks;
+import ActionSeq;
+
+makeRequest :: Bool -> Bit 8 -> Bit 8 -> BRAMRequest (Bit 8) (Bit 8);
+makeRequest write addr dat = 
+  BRAMRequest { 
+    write = write;
+    responseOnWrite = False; 
+    address = addr; 
+    datain = dat; 
+    }
+
+{-# properties mkTestbench = { verilog } #-}
+mkTestbench :: Module Empty
+mkTestbench = do
+  let cfg :: BRAM_Configure = defaultValue {
+    allowWriteResponseBypass = False;
+    loadFormat = Hex "bram2.txt";
+    };
+
+  count :: Reg (UInt 3) <- mkReg 0;
+  dut1 :: BRAM1Port (Bit 8) (Bit 8) <- mkBRAM1Server cfg;
+
+  done :: Reg Bool
+  done <- mkReg False
+
+  s :: ActionSeq
+  s <- actionSeq 
+    $  do
+         $display "count = %d" count
+         dut1.portA.request.put $ makeRequest False 0 0
+    |> do
+         $display "count = %d" count
+         $display "dut1read[0] = %x" dut1.portA.response.get
+         dut1.portA.request.put $ makeRequest False 1 0
+    |> do
+         $display "count = %d" count
+         $display "dut1read[1] = %x" dut1.portA.response.get
+         dut1.portA.request.put $ makeRequest False 2 0
+    |> do
+         $display "count = %d" count
+         $display "dut1read[2] = %x" dut1.portA.response.get
+    |> do
+         $finish
+
+  addRules $
+    rules
+      "counting" : when True ==>
+        do
+          count := 3
+          s.start
+
+  return $ interface Empty
