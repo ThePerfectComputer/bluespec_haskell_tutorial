@@ -1,0 +1,68 @@
+package Top where
+
+interface BusClient =
+  request  :: Bit 1
+  response :: Bit 1 -> Action
+
+mkBusClient :: Module BusClient
+mkBusClient = module
+  reqReg :: Reg (Bit 1) <- mkReg 0
+  return $
+    interface BusClient
+      request = reqReg
+      response resp = do
+        reqReg := 0  -- Reset request after receiving response
+
+interface Bus =
+  request  :: Bit 1 -> Action
+  response :: Bit 1
+
+mkBus :: Module Bus
+mkBus = module
+  respReg :: Reg (Bit 1) <- mkReg 0
+  return $
+    interface Bus
+      request req = do
+        respReg := req  -- Simple pass-through for this example
+      response = respReg
+
+connectBusToClient :: Bus -> BusClient -> Rules
+connectBusToClient bus client =
+  rules
+    "busConnection": when True ==> do
+      bus.request client.request
+      client.response bus.response
+
+mkTop :: Module Empty
+mkTop =
+  module
+    -- I'm not declaring types for the reg here, it can be inferred,
+    -- and later we could have a language server that allows for inspection
+    -- of inferred types
+    -- cycle :: Reg(Int 16)
+    cycle <- mkReg (negate 1)
+    end_cycle <- mkReg 4
+
+    bus          :: Bus <- mkBus
+    busClient    :: BusClient <- mkBusClient
+
+    addRules $ connectBusToClient bus busClient
+    addRules $ mkHelloRule <+> (simulate_for cycle end_cycle)
+    -- addRules $ (simulate_for cycle end_cycle) <+> mkHelloRule
+
+mkHelloRule :: Rules
+mkHelloRule =
+    rules
+      "rl_print_answer": when True ==> action
+          $display "Hello World." $stime
+
+simulate_for :: (Bits a n, Arith a, Eq a) => Reg a -> Reg a -> Rules
+simulate_for curr_cycle end_cycle =
+  rules
+    "count_cycle_rule": when True ==> action
+      curr_cycle := curr_cycle + 1
+      if curr_cycle == end_cycle
+        then
+          $finish
+        else
+          $display curr_cycle
