@@ -1,5 +1,5 @@
 A small example showing how one might create interfaces for connecting a BusClient to a
-Bus Master.
+Bus Client.
 
 Try swappping the order of the rules between lines 12 and 13 to see how firing order/timing changes in bsim, but not in verilator nor iverilog.
 
