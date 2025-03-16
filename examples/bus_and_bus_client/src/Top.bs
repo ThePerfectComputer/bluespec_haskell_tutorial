@@ -11,27 +11,16 @@ mkBusClient = module
     interface BusClient
       request = reqReg
       response resp = do
-        reqReg := 0  -- Reset request after receiving response
+        reqReg := 0
 
-interface Bus =
-  request  :: Bit 1 -> Action
-  response :: Bit 1
-
-mkBus :: Module Bus
-mkBus = module
+mkBus :: BusClient -> BusClient -> Module Empty
+mkBus busClient1 busClient2 = module
   respReg :: Reg (Bit 1) <- mkReg 0
-  return $
-    interface Bus
-      request req = do
-        respReg := req  -- Simple pass-through for this example
-      response = respReg
-
-connectBusToClient :: Bus -> BusClient -> Rules
-connectBusToClient bus client =
-  rules
-    "busConnection": when True ==> do
-      bus.request client.request
-      client.response bus.response
+  addRules $
+    rules
+      "busConnection" : when True ==> do
+        busClient1.response(busClient2.request)
+        busClient2.response(busClient1.request)
 
 mkTop :: Module Empty
 mkTop =
@@ -43,10 +32,10 @@ mkTop =
     cycle <- mkReg (negate 1)
     end_cycle <- mkReg 4
 
-    bus          :: Bus <- mkBus
-    busClient    :: BusClient <- mkBusClient
+    busClient1    :: BusClient <- mkBusClient
+    busClient2    :: BusClient <- mkBusClient
+    bus          :: Empty <- mkBus busClient1 busClient2
 
-    addRules $ connectBusToClient bus busClient
     addRules $ mkHelloRule <+> (simulate_for cycle end_cycle)
     -- addRules $ (simulate_for cycle end_cycle) <+> mkHelloRule
 
