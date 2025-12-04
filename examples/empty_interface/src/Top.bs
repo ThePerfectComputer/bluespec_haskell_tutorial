@@ -1,0 +1,7 @@
+package Top where
+
+type TestVal = 9
+
+mkTop :: Module Empty
+mkTop = do
+  return $ interface Empty { }
