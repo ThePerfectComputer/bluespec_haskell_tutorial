@@ -1,0 +1,23 @@
+package Top where
+
+import Util
+import ActionSeq
+
+mkTop :: Module Empty
+mkTop = do
+    fsm :: ActionSeq
+    fsm <- actionSeq
+         $  do
+           $display "state1"
+         |> do
+           $display "state2"
+         |> do
+           $display "state3"
+         |> do
+           $finish
+
+    addRules $
+      rules
+        when (True) ==>
+          do
+            fsm.start
