@@ -1,0 +1,33 @@
+package Top where
+
+import Util
+import ActionSeq
+import FIFO
+
+mkTop :: Module Empty
+mkTop = do
+    cycle :: Reg (UInt 32)
+    cycle <- mkReg 0
+
+    depth2FIFO :: FIFO (UInt 32)
+    depth2FIFO <- mkFIFO
+
+    addRules $
+      rules
+        when True ==>
+          do
+            cycle := cycle + 1
+
+        when True ==>
+          do
+            $display "enqueuing :" cycle " during cycle :" cycle
+            depth2FIFO.enq cycle
+
+        when True ==>
+          do
+            $display "dequeuing :" depth2FIFO.first " during cycle :" cycle
+            depth2FIFO.deq
+
+        when (cycle == 4) ==>
+          do
+            $finish
