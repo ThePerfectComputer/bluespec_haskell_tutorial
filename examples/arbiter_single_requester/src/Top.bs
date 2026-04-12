@@ -1,0 +1,46 @@
+package Top where
+
+import Arbiter
+import Vector
+
+{-# synthesize mkTop #-}
+mkTop :: Module Empty
+mkTop =
+  module
+    arb :: Arbiter_IFC 3
+    arb <- mkArbiter False
+
+    cycle :: Reg (UInt 8)
+    cycle <- mkReg 0
+
+    let c0 = arb.clients !! 0
+        c1 = arb.clients !! 1
+        c2 = arb.clients !! 2
+
+    rules
+      "request_only_2":
+        when True
+          ==> c2.request
+
+      "check_grant":
+        when True
+          ==> action
+                let ok = (arb.grant_id == 2) && not c0.grant && not c1.grant && c2.grant
+                if ok
+                  then action {
+                         $display "cycle=%0d PASS grant_id=%0d grants={%0d,%0d,%0d}"
+                                  cycle arb.grant_id c0.grant c1.grant c2.grant
+                       }
+                  else action {
+                         $display "cycle=%0d FAIL grant_id=%0d grants={%0d,%0d,%0d}"
+                                  cycle arb.grant_id c0.grant c1.grant c2.grant
+                         $finish
+                       }
+                cycle := cycle + 1
+
+      "finish":
+        when cycle == 8
+          ==> action {
+                $display "Only requester 2 was granted every cycle."
+                $finish
+              }

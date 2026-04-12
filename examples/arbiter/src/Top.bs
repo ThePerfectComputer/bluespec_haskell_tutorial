@@ -1,0 +1,42 @@
+package Top where
+
+import Arbiter
+import Vector
+
+{-# synthesize mkTop #-}
+mkTop :: Module Empty
+mkTop =
+  module
+    arb :: Arbiter_IFC 3
+    arb <- mkArbiter False
+
+    cycle :: Reg (UInt 8)
+    cycle <- mkReg 0
+
+    let c0 = arb.clients !! 0
+        c1 = arb.clients !! 1
+        c2 = arb.clients !! 2
+
+    rules
+      "request_0":
+        when True
+          ==> c0.request
+
+      "request_1":
+        when True
+          ==> c1.request
+
+      "request_2":
+        when True
+          ==> c2.request
+
+      "show_grants":
+        when True
+          ==> action
+                $display "cycle=%0d grant_id=%0d grants={%0d,%0d,%0d}"
+                         cycle arb.grant_id c0.grant c1.grant c2.grant
+                cycle := cycle + 1
+
+      "finish":
+        when cycle == 8
+          ==> $finish

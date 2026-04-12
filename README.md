@@ -70,7 +70,18 @@ If you you want to get started with programming an FPGA with bluespec right away
     This example provides some exposure to interfaces, as well as setting type 
     contraints on module types.
 
-4. [Pipelined CPU](./examples/pipelined_cpu/)
+4. [Arbiter](./examples/arbiter/)
+
+    A small example showing how to use `mkArbiter` from the standard library
+    in Bluespec Haskell. It demonstrates that the `clients` subinterface is a
+    `Vector`, so you can select individual clients with `!!`.
+
+5. [Arbiter Single Requester](./examples/arbiter_single_requester/)
+
+    A 3-client arbiter test that drives requests only from client `2` and
+    confirms that client `2` is granted every cycle.
+
+6. [Pipelined CPU](./examples/pipelined_cpu/)
 
     A compact pipelined CPU example that loads instruction and data memories
     from hex files. This one is a nice next step once the state machine and
