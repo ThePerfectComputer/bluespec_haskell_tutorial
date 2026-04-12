@@ -70,6 +70,12 @@ If you you want to get started with programming an FPGA with bluespec right away
     This example provides some exposure to interfaces, as well as setting type 
     contraints on module types.
 
+4. [Pipelined CPU](./examples/pipelined_cpu/)
+
+    A compact pipelined CPU example that loads instruction and data memories
+    from hex files. This one is a nice next step once the state machine and
+    interface examples feel comfortable.
+
 # Other Dependencies
 
 You will need ``verilator`` and ``icarus-verilog`` if you wish to try other simulators besides ``bsim``.

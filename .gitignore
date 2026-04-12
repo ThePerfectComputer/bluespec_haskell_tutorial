@@ -1,2 +1,10 @@
 *.vcd
 *.so
+*.log
+*_b_sim
+*_v_sim
+obj_dir*/
+build_b_sim/
+build_v/
+verilog_RTL/
+/doc/

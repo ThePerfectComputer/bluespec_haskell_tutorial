@@ -1,0 +1,99 @@
+package CPU where
+
+import RegFile
+import FIFO
+
+type RegIx = UInt 4
+type Word = UInt 32
+type Addr = UInt 12
+type Imm = UInt 8
+
+data ArithOp = Add | Sub deriving (Bits)
+data Cond = Zero | NonZero deriving (Bits)
+
+data Instr = Arith ArithOp RegIx RegIx RegIx  -- add r5, r3, r1
+           | ArithImm ArithOp RegIx RegIx Imm         -- sub r5, r3, 17
+	   | Load RegIx RegIx Imm
+	   | Jump Cond RegIx Addr
+	   | Out RegIx
+	   | HCF
+	deriving (Bits)
+
+{-# synthesize mkCPU #-}
+mkCPU :: Module Empty
+mkCPU = module
+    pc :: Reg Addr <- mkReg 0
+    rf :: RegFile RegIx Word <- mkRegFileFull
+    imem :: RegFile Addr Instr <- mkRegFileFullLoad "imem.hex"
+    dmem :: RegFile Addr Word <- mkRegFileFullLoad "dmem.hex"
+
+    bufFD <- mkFIFO
+    bufDX <- mkFIFO
+    fw <- mkReg Nothing
+
+    let reg ix = if ix == 0 then 0 else rf.sub ix
+        val _ v when Nothing <- fw = v
+	val ix v when Just (ix', v') <- fw = if ix' == ix then v' else v
+
+    rules
+        -- FETCH STAGE
+        "F": when True ==> action
+	    pc := pc + 1
+	    bufFD.enq (imem.sub pc)
+
+        -- DECODE
+	"D_arith": when Arith op rd rs rt <- bufFD.first  ==> action
+	    bufDX.enq (bufFD.first, reg rs, reg rt)
+	    bufFD.deq
+	
+	"D_arith_imm": when ArithImm op rd rs imm <- bufFD.first ==> action
+	    bufDX.enq (Arith op rd rs _, reg rs, signExtend imm)
+	    bufFD.deq
+	    
+	"D_ld": when Load rd rs ofs <- bufFD.first ==> action
+	    bufDX.enq (bufFD.first, reg rs, _)
+	    bufFD.deq
+	
+	"D_j": when Jump _ rs _ <- bufFD.first ==> action
+	    bufDX.enq (bufFD.first, reg rs, _)
+	    bufFD.deq
+	
+	"D_out": when Out rs <- bufFD.first ==> action
+	    bufDX.enq (bufFD.first, reg rs, _)
+	    bufFD.deq
+	
+	"D_hcf": when HCF <- bufFD.first ==> action
+	    bufDX.enq (HCF, _, _)
+	    
+        -- EXECUTE
+	"X_arith": when (Arith op rd rs rt, vs, vt) <- bufDX.first ==> action
+	    let ans Add = val rs vs + val rt vt
+	        ans Sub = val rs vs - val rt vt
+	    rf.upd rd (ans op)
+	    fw := Just (rd, ans op)
+            bufDX.deq
+
+	"X_ld": when (Load rd rs ofs, vs, vt) <- bufDX.first ==> action
+	    let ans = dmem.sub (truncate (val rs vs + signExtend ofs))
+	    rf.upd rd ans
+	    fw := Just (rd, ans)
+	    bufDX.deq
+
+	"X_j": when (Jump op rs dst, vs, _) <- bufDX.first ==> action
+	    let cond Zero = val rs vs == 0
+	        cond NonZero = val rs vs /= 0
+	    if cond op then action
+	        pc := dst
+		bufFD.clear
+		bufDX.clear
+	    else bufDX.deq
+	    fw := Nothing
+	
+	"X_out": when (Out rs, vs, _) <- bufDX.first ==> action
+	    $display "%0d" (val rs vs)
+	    fw := Nothing
+	    bufDX.deq
+
+	"X_hcf": when (HCF, _, _) <- bufDX.first ==> action
+	    $finish
+
